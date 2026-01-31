@@ -1,0 +1,11 @@
+{
+  "name": "NeuroService",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "NeuroService": {
+        "$path": "src"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# Rojo / Roblox
+.rojo/
+*.lock
+*.temp
+server.lock
+
+# Build files
+*.rbxl
+*.rbxlx
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.log

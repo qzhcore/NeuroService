@@ -1,0 +1,14 @@
+{
+    "name": "NeuroService Dev Environment",
+    "image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rojo.rojo",
+                "JohnnyMorganz.stylua",
+                "Nightly-Builds.luau-lsp"
+            ]
+        }
+    },
+    "postCreateCommand": "sh -c \"$(curl -fsSL https://raw.githubusercontent.com/lpgh/aftman/main/install.sh)\" && aftman install"
+}

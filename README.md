@@ -35,7 +35,7 @@ local Settings = {
 
 	LOD_ENABLED = true, -- Turn on Level of Detail
 	DISTANCE_FAR = 300, -- Distance to start slowing down AI updates
-	DISTANCE_CULL = 1000, -- Distance to stop AI updates entirely
+	THROTTLE_FAR = 0.25, -- Update interval to use when an entity is far away
 }
 ```
 

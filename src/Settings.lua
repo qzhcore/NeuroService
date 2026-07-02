@@ -1,16 +1,15 @@
 local Settings = {
-    -- Performance & Batching
-    Max_Task_Per_Frame = 20,
-    Default_Throttle = 0.1,
+	-- Performance & batching
+	MAX_TASKS_PER_FRAME = 20,
+	DEFAULT_THROTTLE = 0.1,
 
-   -- LOD (Level of Detail)
-  Lod_Enabled = true,
-  Distance_Far = 300,
-  Throttle_Far
+	-- LOD (Level of Detail)
+	LOD_ENABLED = true,
+	DISTANCE_FAR = 300,
+	THROTTLE_FAR = 0.25,
 
-   -- Debugging
-   Debug = false,
+	-- Debugging
+	DEBUG = false,
 }
 
 return table.freeze(Settings)
-  

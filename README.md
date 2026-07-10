@@ -39,6 +39,16 @@ local Settings = {
 }
 ```
 
+## API
+
+Full API reference: [docs/API.md](docs/API.md).
+
+Build a distributable package:
+
+```bash
+rojo build pack.project.json --output build/NeuroService.rbxm
+```
+
 ## Usage Example
 
 To register an NPC, pass the model and the desired brain module to the service:

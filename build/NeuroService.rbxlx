@@ -1,0 +1,268 @@
+<roblox version="4">
+  <Item class="ServerScriptService" referent="0">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">NeuroService</string>
+        <string name="Source"><![CDATA[local NeuroService = {}
+NeuroService.Registry = {}
+
+local RunService = game:GetService("RunService")
+local Settings = require(script.Settings)
+
+local heartbeatConnection: RBXScriptConnection? = nil
+
+function NeuroService:Init()
+	if heartbeatConnection ~= nil then
+		return
+	end
+
+	heartbeatConnection = RunService.Heartbeat:Connect(function(dt)
+		self:ProcessEntities(dt)
+	end)
+end
+
+function NeuroService:Register(
+	instance: Model,
+	brainModule: ModuleScript | { [string]: any },
+	config: { [string]: any }?
+)
+	assert(typeof(instance) == "Instance", "NeuroService:Register expects a Roblox Instance")
+	assert(instance:IsA("Model"), "NeuroService:Register expects a Model")
+
+	local brain = if typeof(brainModule) == "Instance" then require(brainModule) else brainModule
+	assert(type(brain) == "table", "NeuroService:Register expects a brain ModuleScript or table")
+
+	local Entity = {
+		Instance = instance,
+		Brain = brain,
+		Config = config or {},
+		Blackboard = {
+			State = "Idle",
+			StartTime = os.clock(),
+			Memory = {},
+			Entity = instance,
+		},
+		LastUpdate = 0,
+	}
+
+	table.insert(self.Registry, Entity)
+	return Entity
+end
+
+function NeuroService:ProcessEntities(dt)
+	local TasksProcessed = 0
+	local Clock = os.clock()
+	local index = 1
+
+	while index <= #self.Registry do
+		if TasksProcessed >= Settings.MAX_TASKS_PER_FRAME then
+			break
+		end
+
+		local Entity = self.Registry[index]
+		if Entity.Instance.Parent == nil then
+			table.remove(self.Registry, index)
+			continue
+		end
+
+		local TimeSinceUpdate = Clock - Entity.LastUpdate
+		local Throttle = Settings.DEFAULT_THROTTLE
+
+		if Settings.LOD_ENABLED and Entity.Instance.PrimaryPart then
+			local Dist = (Entity.Instance.PrimaryPart.Position - Vector3.zero).Magnitude
+			if Dist > Settings.DISTANCE_FAR then
+				Throttle = Settings.THROTTLE_FAR
+			end
+		end
+
+		if TimeSinceUpdate >= Throttle then
+			local StateLogic = Entity.Brain[Entity.Blackboard.State]
+			if StateLogic then
+				StateLogic(Entity.Blackboard, dt)
+			end
+			Entity.LastUpdate = Clock
+			TasksProcessed += 1
+		end
+
+		index += 1
+	end
+end
+
+function NeuroService:Unregister(entity)
+	for index, registered in self.Registry do
+		if registered == entity or registered.Instance == entity then
+			table.remove(self.Registry, index)
+			return true
+		end
+	end
+
+	return false
+end
+
+function NeuroService:Destroy()
+	if heartbeatConnection ~= nil then
+		heartbeatConnection:Disconnect()
+		heartbeatConnection = nil
+	end
+
+	table.clear(self.Registry)
+end
+
+return NeuroService
+]]></string>
+      </Properties>
+      <Item class="Folder" referent="2">
+        <Properties>
+          <string name="Name">Internal</string>
+        </Properties>
+        <Item class="ModuleScript" referent="3">
+          <Properties>
+            <string name="Name">Utility</string>
+            <string name="Source"><![CDATA[local Utility = {}
+
+function Utility.GetRandomPointInRadius(Center, Radius)
+	local Angle = math.rad(math.random(0, 360))
+	local Dist = math.random(0, Radius)
+	return Center + Vector3.new(math.cos(Angle) * Dist, 0, math.sin(Angle) * Dist)
+end
+
+function Utility.Lerp(a, b, t)
+	return a + (b - a) * t
+end
+
+return Utility
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="4">
+        <Properties>
+          <string name="Name">Sensors</string>
+        </Properties>
+        <Item class="ModuleScript" referent="5">
+          <Properties>
+            <string name="Name">Vision</string>
+            <string name="Source"><![CDATA[local Vision = {}
+
+local function getPosition(target: Instance): Vector3?
+	if target:IsA("BasePart") then
+		return target.Position
+	end
+
+	if target:IsA("Model") then
+		local primaryPart = target.PrimaryPart
+		return if primaryPart ~= nil then primaryPart.Position else target:GetPivot().Position
+	end
+
+	return nil
+end
+
+function Vision.CanSee(Entity, Target: Instance, FOV, Distance)
+	local entityModel = Entity.Instance
+	local primaryPart = entityModel.PrimaryPart
+	if primaryPart == nil then
+		return false
+	end
+
+	local Origin = primaryPart.Position
+	local TargetPos = getPosition(Target)
+	if TargetPos == nil then
+		return false
+	end
+
+	local Direction = TargetPos - Origin
+	local Magnitude = Direction.Magnitude
+	if Magnitude <= 0 or Magnitude > Distance then
+		return false
+	end
+
+	local Forward = primaryPart.CFrame.LookVector
+	local Dot = math.clamp(Forward:Dot(Direction.Unit), -1, 1)
+	local Angle = math.deg(math.acos(Dot))
+
+	if Angle > (FOV / 2) then
+		return false
+	end
+
+	local Params = RaycastParams.new()
+	Params.FilterDescendantsInstances = { entityModel }
+	Params.FilterType = Enum.RaycastFilterType.Exclude
+
+	local Result = workspace:Raycast(Origin, Direction, Params)
+
+	if Result == nil then
+		return true
+	end
+
+	if Result.Instance == Target or Result.Instance:IsDescendantOf(Target) then
+		return true
+	end
+
+	return false
+end
+
+return Vision
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">Settings</string>
+          <string name="Source"><![CDATA[local Settings = {
+	-- Performance & batching
+	MAX_TASKS_PER_FRAME = 20,
+	DEFAULT_THROTTLE = 0.1,
+
+	-- LOD (Level of Detail)
+	LOD_ENABLED = true,
+	DISTANCE_FAR = 300,
+	THROTTLE_FAR = 0.25,
+
+	-- Debugging
+	DEBUG = false,
+}
+
+return table.freeze(Settings)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="7">
+        <Properties>
+          <string name="Name">Shared</string>
+        </Properties>
+        <Item class="ModuleScript" referent="8">
+          <Properties>
+            <string name="Name">Signal</string>
+            <string name="Source"><![CDATA[local Signal = {}
+Signal.__index = Signal
+
+function Signal.new()
+	return setmetatable({
+		_bindable = Instance.new("BindableEvent"),
+	}, Signal)
+end
+
+function Signal:Connect(callback)
+	return self._bindable.Event:Connect(callback)
+end
+
+function Signal:Fire(...)
+	self._bindable:Fire(...)
+end
+
+function Signal:Destroy()
+	self._bindable:Destroy()
+end
+
+return Signal
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

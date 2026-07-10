@@ -1,0 +1,34 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Aftman
+        uses: ok-nick/setup-aftman@v0.4.2
+
+      - name: Install tools
+        run: aftman install
+
+      - name: Build package
+        run: |
+          mkdir -p build
+          rojo build pack.project.json --output build/NeuroService.rbxm
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/NeuroService.rbxm
+          generate_release_notes: true

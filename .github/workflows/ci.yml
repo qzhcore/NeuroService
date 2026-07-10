@@ -21,3 +21,10 @@ jobs:
 
       - name: Lint Code
         run: selene src
+
+      - name: Build package
+        run: |
+          curl -L https://github.com/rojo-rbx/rojo/releases/download/v7.6.1/rojo-7.6.1-linux.zip -o rojo.zip
+          unzip rojo.zip
+          chmod +x rojo
+          ./rojo build pack.project.json --output NeuroService.rbxm
